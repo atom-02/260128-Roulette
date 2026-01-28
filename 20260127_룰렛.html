@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행운의 원반 돌리기 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 85vw;
+            max-width: 450px;
+            aspect-ratio: 1 / 1;
+        }
+
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 10px solid #ffffff22;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1);
+        }
+
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 50px;
+            background-color: #ff4d4d;
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 20;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+        }
+
+        .center-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 50%;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .center-dot:active { transform: translate(-50%, -50%) scale(0.9); }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background: #ffffff;
+            color: #1a1a2e;
+            padding: 2.5rem;
+            border-radius: 2rem;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.8);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popIn { to { transform: scale(1); } }
+
+        /* 커스텀 스크롤바 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1a1a2e; }
+        ::-webkit-scrollbar-thumb { background: #4e4e6a; border-radius: 10px; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto w-full flex flex-col lg:flex-row gap-10 items-center lg:items-start justify-center">
+        
+        <!-- 왼쪽: 원반 영역 -->
+        <div class="flex flex-col items-center gap-6 w-full lg:w-1/2">
+            <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
+                Lucky Roulette
+            </h1>
+
+            <div class="wheel-container">
+                <div class="pointer"></div>
+                <div class="center-dot" onclick="spin()">
+                    <span class="text-blue-900 font-bold text-sm">SPIN</span>
+                </div>
+                <canvas id="wheel"></canvas>
+            </div>
+
+            <div class="flex gap-4 mt-4 w-full justify-center">
+                <button id="spinBtn" class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold py-4 px-12 rounded-2xl text-xl shadow-lg transition-all active:scale-95 disabled:opacity-50">
+                    원반 돌리기
+                </button>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 설정 영역 -->
+        <div class="w-full lg:w-1/2 bg-white/5 p-6 rounded-3xl border border-white/10 backdrop-blur-sm">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <span>⚙️ 멤버 목록 설정</span>
+                <span id="memberCountLabel" class="text-sm font-normal text-cyan-400 ml-auto">총 23명</span>
+            </h2>
+            
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="nameInput" placeholder="이름을 입력하세요" 
+                    class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 outline-none focus:border-cyan-400 transition-colors">
+                <button onclick="addName()" class="bg-cyan-500 hover:bg-cyan-400 text-white px-6 rounded-xl font-bold transition-colors">추가</button>
+            </div>
+
+            <div id="nameList" class="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto p-2 mb-4 bg-black/20 rounded-xl">
+                <!-- 이름 태그들이 여기 추가됨 -->
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="resetToDefault()" class="flex-1 text-sm bg-white/5 hover:bg-white/10 py-2 rounded-lg transition-colors border border-white/10">초기화(23명)</button>
+                <button onclick="clearAll()" class="flex-1 text-sm bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 rounded-lg transition-colors border border-red-500/20">모두 삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 결과 모달 -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content shadow-2xl">
+            <p class="text-gray-500 font-medium mb-1 uppercase tracking-widest text-sm">Result</p>
+            <h2 class="text-2xl font-bold text-gray-800">축하합니다! 🎉</h2>
+            <div id="winnerDisplay" class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-purple-600 my-8">
+                -
+            </div>
+            <button onclick="closeModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl transition-all">
+                확인
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const resultModal = document.getElementById('resultModal');
+        const winnerDisplay = document.getElementById('winnerDisplay');
+        const nameInput = document.getElementById('nameInput');
+        const nameListContainer = document.getElementById('nameList');
+        const memberCountLabel = document.getElementById('memberCountLabel');
+
+        // 상태 관리
+        let items = Array.from({ length: 23 }, (_, i) => `${i + 1}번`);
+        let currentRotation = 0;
+        let isSpinning = false;
+        
+        // 사운드 시스템 (Web Audio API)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTickSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        function playWinSound() {
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            notes.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.1 + 0.5);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + i * 0.1);
+                osc.stop(audioCtx.currentTime + i * 0.1 + 0.6);
+            });
+        }
+
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', 
+            '#F06292', '#AED581', '#FFD54F', '#4DB6AC', '#7986CB',
+            '#9575CD', '#FF8A65', '#DCE775', '#A1887F', '#90A4AE'
+        ];
+
+        function drawWheel() {
+            const size = 1000;
+            canvas.width = size;
+            canvas.height = size;
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = size / 2 - 20;
+            const itemCount = items.length;
+            const sliceAngle = (2 * Math.PI) / (itemCount || 1);
+
+            ctx.clearRect(0, 0, size, size);
+
+            if (itemCount === 0) {
+                ctx.beginPath();
+                ctx.fillStyle = "#333";
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.fillStyle = "white";
+                ctx.font = "bold 40px Pretendard";
+                ctx.textAlign = "center";
+                ctx.fillText("이름을 추가해주세요", centerX, centerY);
+                return;
+            }
+
+            for (let i = 0; i < itemCount; i++) {
+                const angle = i * sliceAngle;
+                
+                // 구역 그리기
+                ctx.beginPath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+                ctx.fill();
+                
+                // 구분선
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                // 텍스트
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "white";
+                const fontSize = itemCount > 20 ? 24 : 32;
+                ctx.font = `bold ${fontSize}px Pretendard`;
+                
+                // 텍스트가 너무 길면 자르기
+                let text = items[i];
+                if(text.length > 8) text = text.substring(0, 7) + "..";
+                ctx.fillText(text, radius - 50, 10);
+                ctx.restore();
+            }
+        }
+
+        function updateNameList() {
+            nameListContainer.innerHTML = '';
+            items.forEach((name, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full flex items-center gap-2 text-sm transition-colors border border-white/5';
+                tag.innerHTML = `
+                    <span>${name}</span>
+                    <button onclick="removeName(${index})" class="text-white/40 hover:text-red-400 font-bold">×</button>
+                `;
+                nameListContainer.appendChild(tag);
+            });
+            memberCountLabel.innerText = `총 ${items.length}명`;
+            drawWheel();
+        }
+
+        function addName() {
+            const name = nameInput.value.trim();
+            if (name) {
+                items.push(name);
+                nameInput.value = '';
+                updateNameList();
+                nameInput.focus();
+            }
+        }
+
+        function removeName(index) {
+            items.splice(index, 1);
+            updateNameList();
+        }
+
+        function clearAll() {
+            items = [];
+            updateNameList();
+        }
+
+        function resetToDefault() {
+            items = Array.from({ length: 23 }, (_, i) => `${i + 1}번`);
+            updateNameList();
+        }
+
+        function spin() {
+            if (isSpinning || items.length === 0) return;
+            
+            // 오디오 컨텍스트 재개 (브라우저 정책 대응)
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            isSpinning = true;
+            spinBtn.disabled = true;
+            spinBtn.innerText = "추천 중...";
+
+            const itemCount = items.length;
+            const extraDegree = Math.floor(Math.random() * 360);
+            const spinDuration = 5000; // 5초
+            const totalSpins = 10 * 360 + extraDegree;
+            
+            const startRotation = currentRotation;
+            currentRotation += totalSpins;
+
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            // 틱 소리 구현
+            let lastTickAngle = 0;
+            const sliceSize = 360 / itemCount;
+            const startTime = performance.now();
+
+            function checkTick(time) {
+                if (!isSpinning) return;
+                
+                const elapsed = time - startTime;
+                const progress = Math.min(elapsed / spinDuration, 1);
+                
+                // 베지에 곡선과 유사한 감속 공식 적용하여 현재 각도 계산
+                const easeOut = 1 - Math.pow(1 - progress, 4);
+                const currentAngle = startRotation + (totalSpins * easeOut);
+                
+                const relativeAngle = currentAngle % 360;
+                if (Math.abs(relativeAngle - lastTickAngle) > sliceSize) {
+                    playTickSound();
+                    lastTickAngle = relativeAngle;
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(checkTick);
+                }
+            }
+            requestAnimationFrame(checkTick);
+
+            setTimeout(() => {
+                isSpinning = false;
+                spinBtn.disabled = false;
+                spinBtn.innerText = "원반 돌리기";
+
+                const normalizedRotation = (currentRotation % 360);
+                const actualAngle = (360 - normalizedRotation + 270) % 360;
+                const winnerIndex = Math.floor(actualAngle / (360 / itemCount)) % itemCount;
+
+                playWinSound();
+                showResult(items[winnerIndex]);
+            }, spinDuration);
+        }
+
+        function showResult(winner) {
+            winnerDisplay.innerText = winner;
+            resultModal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            resultModal.style.display = 'none';
+        }
+
+        // 엔터키 입력 지원
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addName();
+        });
+
+        // 초기화
+        window.onload = () => {
+            updateNameList();
+        };
+    </script>
+</body>
+</html>
